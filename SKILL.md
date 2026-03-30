@@ -1,9 +1,9 @@
 ---
 name: project-init
-description: Use this skill only for first-time initialization of a software project. It creates persistent project state under ~/.codex-state/<project-key>/, stores the durable planning document at ~/.codex-state/plan/plan.md, gathers the user's intended development goals before finalizing plan.md and feature_list.json, prefers Chinese for user-facing outputs unless the user explicitly requests another language, and creates or updates only the minimum required initialization files. It should also ensure AGENTS.md is git-ignored when appropriate. Do not use this skill for normal implementation work or routine bugfixes. After initialization, routine development should read the persistent state and use using-superpowers for one-feature-at-a-time execution.
+description: Use this skill only for first-time initialization of a software project. It creates persistent project state under ~/.codex-state/<project-key>/, stores the durable primary planning document at ~/.codex-state/<project-key>/plan/plan.md, requires later write-plan or writing-plans outputs to be written under ~/.codex-state/<project-key>/plan/ as xxx_plan.md files instead of inside the repository, gathers the user's intended development goals before finalizing plan.md and feature_list.json, prefers Chinese for user-facing outputs unless the user explicitly requests another language, and creates or updates only the minimum required initialization files. It should also ensure AGENTS.md is git-ignored when appropriate. Do not use this skill for normal implementation work or routine bugfixes. After initialization, routine development should read the persistent state and use using-superpowers for one-feature-at-a-time execution.
 ---
 
-# Project Init v4
+# Project Init v5
 
 ## Purpose
 
@@ -14,14 +14,15 @@ Its responsibilities are:
 1. detect the current project root
 2. derive a stable project key
 3. create persistent project state under `~/.codex-state/<project-key>/`
-4. store the durable shared planning document at `~/.codex-state/plan/plan.md`
-5. inspect the repository or empty project folder
-6. gather the user's intended development goals before finalizing the plan
-7. write an initial project plan
-8. create an initial task backlog
-9. create or update only the **minimum required initialization guidance** in the project root so future threads know how to continue
-10. set the default user-facing workflow language to Chinese unless the user explicitly requests another language
-11. ensure local-only workflow files such as `AGENTS.md` are git-ignored when appropriate
+4. store the durable primary planning document at `~/.codex-state/<project-key>/plan/plan.md`
+5. reserve `~/.codex-state/<project-key>/plan/*.md` for future planning artifacts such as `xxx_plan.md`
+6. inspect the repository or empty project folder
+7. gather the user's intended development goals before finalizing the plan
+8. write an initial project plan
+9. create an initial task backlog
+10. create or update only the **minimum required initialization guidance** in the project root so future threads know how to continue
+11. set the default user-facing workflow language to Chinese unless the user explicitly requests another language
+12. ensure local-only workflow files such as `AGENTS.md` are git-ignored when appropriate
 
 This skill does **not** perform routine implementation and must not turn initialization into real feature development.
 
@@ -36,7 +37,7 @@ On the first initialization thread, do **not** modify arbitrary project files.
 Allowed modifications are limited to:
 
 - the persistent state files under `~/.codex-state/<project-key>/`
-- the shared planning file at `~/.codex-state/plan/plan.md`
+- the project plan directory under `~/.codex-state/<project-key>/plan/`
 - project-root `AGENTS.md` **only as needed for workflow bootstrapping**
 - project-root `.gitignore` **only as needed to keep local-only workflow files out of git**
 - repo-local skill files under `.agents/skills/` or `.codex/skills/` only if the user explicitly asked for them in the current session
@@ -112,7 +113,7 @@ When invoked, perform this sequence:
 1. detect the project root
 2. derive the project key
 3. create the persistent state directory and baseline files
-4. create the shared plan directory and plan file
+4. create the project-scoped plan directory and plan file
 5. inspect the repository or empty folder
 6. gather or confirm the user's development goals
 7. write `plan.md`
@@ -169,13 +170,22 @@ Record this path as `STATE_DIR`.
 
 Create:
 
-`~/.codex-state/plan/`
+`~/.codex-state/<project-key>/plan/`
 
 Record this path as `PLAN_DIR`.
 
-Record the durable plan file path as `PLAN_PATH`, which must be:
+Record the durable primary plan file path as `PLAN_PATH`, which must be:
 
-`~/.codex-state/plan/plan.md`
+`~/.codex-state/<project-key>/plan/plan.md`
+
+Important:
+
+- `PLAN_DIR` is project-scoped and belongs only to the current `PROJECT_KEY`
+- `PLAN_PATH` is the durable primary plan file for the project
+- future planning artifacts created by `write-plan` or `writing-plans` must also live inside `PLAN_DIR`
+- additional plan artifacts should use descriptive filenames ending in `_plan.md`, such as `auth-flow_plan.md` or `phase1-api_plan.md`
+- the `xxx` portion in `xxx_plan.md` should be a short topic slug using lowercase letters, digits, and hyphens where practical
+- do not write plan artifacts into repository paths such as `docs/superpowers/plans/` unless the user explicitly asks for in-repo plan files
 
 Ensure the following files exist inside `STATE_DIR`:
 
@@ -272,10 +282,11 @@ It must contain at least:
   "project_key": "string",
   "project_root": "absolute path",
   "state_dir": "absolute path",
+  "plan_dir": "absolute path",
   "plan_path": "absolute path",
   "initialized": true,
   "initialization_phase_complete": true,
-  "workflow_version": 4,
+  "workflow_version": 5,
   "last_initialized_at": "ISO-8601 timestamp",
   "is_git_repo": true,
   "default_user_language": "zh-CN",
@@ -287,6 +298,12 @@ It must contain at least:
     "default_execution_skill": "using-superpowers",
     "one_feature_per_cycle": true,
     "requires_progress_sync": true
+  },
+  "plan_policy": {
+    "plan_dir": "absolute path",
+    "primary_plan_filename": "plan.md",
+    "write_plan_output_pattern": "*_plan.md",
+    "allow_in_repo_plan_files": false
   }
 }
 ```
@@ -312,6 +329,12 @@ This file must reflect both:
 - the observed repository/project state
 - the user's confirmed development goals
 
+The document must also clearly identify:
+
+- current `PROJECT_KEY`
+- current `PROJECT_ROOT`
+- last update timestamp
+
 It should include:
 
 1. project summary
@@ -327,6 +350,14 @@ It should include:
 If the project is empty, the plan should still be useful and should focus on scaffolding and first milestones instead of pretending code already exists.
 
 Do not write vague filler.
+
+Additional planning artifacts created later by `write-plan` or `writing-plans` must be stored under `PLAN_DIR` using descriptive filenames ending with `_plan.md`.
+
+When naming additional plan artifacts, prefer:
+
+- `<topic-slug>_plan.md` for a new topic-specific plan
+- reuse the existing topic file if the plan is a revision of the same topic
+- avoid generic names such as `new_plan.md`, `temp_plan.md`, or `plan2.md`
 
 ---
 
@@ -369,7 +400,7 @@ Each item should contain at least:
 
 If appropriate, begin with setup, architecture, scaffold, or interface-definition tasks before implementation tasks.
 
-Keep `feature_list.json` and `PLAN_PATH` aligned. If a later thread materially updates or finalizes `feature_list.json`, it should also update `~/.codex-state/plan/plan.md` in the same cycle when the plan changed.
+Keep `feature_list.json` and `PLAN_PATH` aligned. If a later thread materially updates or finalizes `feature_list.json`, it should also update `~/.codex-state/<project-key>/plan/plan.md` in the same cycle when the plan changed.
 
 ---
 
@@ -415,7 +446,7 @@ Default to Chinese for user-facing communication unless the user explicitly requ
 
 ## What was created or updated
 - state.json
-- ~/.codex-state/plan/plan.md
+- ~/.codex-state/<project-key>/plan/plan.md
 - feature_list.json
 - progress.md
 - AGENTS.md created or updated if needed
@@ -462,7 +493,7 @@ If a managed block already exists, update only the contents of that block.
 The resulting `AGENTS.md` must implement this logic:
 
 #### State A: Not initialized
-If the persistent state directory, the shared plan file, or required files under `~/.codex-state/<project-key>/` are missing or invalid, the agent should tell the user to run:
+If the persistent state directory, the project plan directory, the primary plan file, or required files under `~/.codex-state/<project-key>/` are missing or invalid, the agent should tell the user to run:
 
 `$project-init`
 
@@ -470,7 +501,7 @@ If the persistent state directory, the shared plan file, or required files under
 If the persistent state exists, future threads should first read:
 
 - `~/.codex-state/<project-key>/state.json`
-- `~/.codex-state/plan/plan.md`
+- `~/.codex-state/<project-key>/plan/plan.md`
 - `~/.codex-state/<project-key>/feature_list.json`
 - `~/.codex-state/<project-key>/progress.md`
 
@@ -481,11 +512,13 @@ Then for routine implementation work:
 3. work only on that feature in the current cycle unless explicitly instructed otherwise
 4. verify before marking done
 5. update `feature_list.json`
-6. if `using-superpowers`, `writing-plans`, `write-plan`, or any other planning workflow is invoked, treat `~/.codex-state/plan/plan.md` as the required plan destination
-7. do not create or update plan files inside the repository such as `docs/superpowers/plans/` unless the user explicitly asks for an in-repo plan file
-8. update `~/.codex-state/plan/plan.md` whenever the planned execution order, scope, or backlog framing changed
-9. append to `progress.md`
-10. keep the repo runnable and reviewable
+6. treat `~/.codex-state/<project-key>/plan/` as the required destination for all plan artifacts
+7. if `using-superpowers`, `writing-plans`, `write-plan`, or any other planning workflow is invoked, write the primary durable plan to `~/.codex-state/<project-key>/plan/plan.md`
+8. when `write-plan` or `writing-plans` creates a new plan artifact, write it inside `~/.codex-state/<project-key>/plan/` using a descriptive filename ending in `_plan.md`
+9. do not create or update plan files inside the repository such as `docs/superpowers/plans/` unless the user explicitly asks for an in-repo plan file
+10. update `~/.codex-state/<project-key>/plan/plan.md` whenever the planned execution order, scope, or backlog framing changed
+11. append to `progress.md`
+12. keep the repo runnable and reviewable
 
 #### General rules
 The AGENTS guidance should also say:
@@ -494,8 +527,9 @@ The AGENTS guidance should also say:
 - do not use `project-init` for routine implementation
 - during the first initialization thread, do not modify arbitrary project files
 - prefer durable state over thread memory
-- treat the shared plan path as a user/project preference that overrides superpowers default plan locations
-- if a planning skill would normally write to an in-repo path, redirect it to `~/.codex-state/plan/plan.md` instead
+- treat the project-scoped plan directory as a user/project preference that overrides superpowers default plan locations
+- if a planning skill would normally write to an in-repo path, redirect it to `~/.codex-state/<project-key>/plan/` instead
+- when a planning skill creates a new plan file, prefer descriptive filenames ending in `_plan.md`
 - if repository state and persistent state conflict, call it out explicitly
 - preserve existing project instructions over generated guidance when they conflict
 
@@ -536,13 +570,15 @@ Before finishing, check that:
 - all required files exist
 - `state.json` is internally consistent
 - `feature_list.json` is valid JSON
-- `~/.codex-state/plan/plan.md` reflects the confirmed goals
+- `~/.codex-state/<project-key>/plan/plan.md` reflects the confirmed goals
+- `~/.codex-state/<project-key>/plan/plan.md` clearly identifies the correct `project-key` or project root for the current project
 - `AGENTS.md` exists in the project root
 - `AGENTS.md` references the correct `project-key`
 - `AGENTS.md` routes normal implementation to `using-superpowers`
 - `AGENTS.md` routes missing-state situations to `$project-init`
 - `AGENTS.md` encodes the default-Chinese communication rule
-- `AGENTS.md` explicitly overrides in-repo superpowers plan destinations in favor of `~/.codex-state/plan/plan.md`
+- `AGENTS.md` explicitly overrides in-repo superpowers plan destinations in favor of `~/.codex-state/<project-key>/plan/`
+- `AGENTS.md` requires new write-plan artifacts to use filenames ending in `_plan.md`
 - `.gitignore` exists or was updated appropriately when the project is a git repo
 - no non-initialization project files were modified unless explicitly requested
 
@@ -562,7 +598,7 @@ If the project is empty:
 - write a plan suitable for a greenfield project
 - create a feature backlog that starts from scaffold/setup/design milestones
 - still create the same persistent state files
-- still create `~/.codex-state/plan/plan.md`
+- still create `~/.codex-state/<project-key>/plan/plan.md`
 - still create or minimally update `AGENTS.md`
 - still create or minimally update `.gitignore` when appropriate
 
@@ -580,7 +616,7 @@ Machine-readable durable backlog. Must be valid JSON array and must reflect conf
 Human-readable durable handoff log.
 
 ### plan.md
-Human-readable durable strategy and planning note stored at `~/.codex-state/plan/plan.md`.
+Human-readable durable strategy and planning note stored at `~/.codex-state/<project-key>/plan/plan.md`.
 
 ### AGENTS.md
 Project-root bootstrap workflow guidance. Keep it minimal and minimally invasive.
@@ -599,7 +635,7 @@ The report must include:
 1. detected project root
 2. derived project key
 3. created state directory
-4. created shared plan path
+4. created project plan directory and primary plan path
 5. whether the project appears empty or non-empty
 6. which files were created or updated
 7. whether AGENTS.md was created or minimally updated
@@ -619,11 +655,12 @@ After initialization is complete, future routine implementation should not use t
 
 Future routine work should:
 
-1. read `~/.codex-state/<project-key>/state.json`, `~/.codex-state/plan/plan.md`, `~/.codex-state/<project-key>/feature_list.json`, and `~/.codex-state/<project-key>/progress.md`
+1. read `~/.codex-state/<project-key>/state.json`, `~/.codex-state/<project-key>/plan/plan.md`, `~/.codex-state/<project-key>/feature_list.json`, and `~/.codex-state/<project-key>/progress.md`
 2. use `using-superpowers`
 3. work one feature at a time
-4. update durable state after each cycle, including `~/.codex-state/plan/plan.md` whenever the plan changes
-5. communicate with the user in Chinese by default unless the user explicitly requests another language
+4. update durable state after each cycle, including `~/.codex-state/<project-key>/plan/plan.md` whenever the plan changes
+5. write additional planning artifacts produced by `write-plan` or `writing-plans` under `~/.codex-state/<project-key>/plan/` using descriptive filenames ending in `_plan.md`
+6. communicate with the user in Chinese by default unless the user explicitly requests another language
 
 This boundary is strict.
 
