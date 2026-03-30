@@ -4,6 +4,50 @@
 
 它只负责“第一次初始化”，不负责日常功能开发。它会为项目建立可持久化的状态目录、初始计划、初始 backlog，以及后续线程继续工作的最小引导规则。
 
+## 环境说明
+
+这个 skill 面向以下环境：
+
+- macOS
+- Linux
+- WSL
+
+说明：
+
+- 持久化状态默认写入当前用户家目录下的 `~/.codex-state/<project-key>/`
+- 在 macOS / Linux / WSL 中，`~` 都表示当前用户的 home 目录
+- 如果你在 WSL 中使用 Codex，应把 WSL 里的 Linux 环境视为运行环境，状态文件也会写入 WSL 的 home 目录，而不是 Windows 用户目录
+
+## 使用前准备
+
+使用这个 skill 之前，应先安装 `using-superpowers` skill。
+
+下载示例：
+
+```bash
+git clone https://github.com/obra/superpowers.git ~/.codex/superpowers
+mkdir -p ~/.agents/skills
+ln -s ~/.codex/superpowers/skills ~/.agents/skills/superpowers
+```
+
+如果没有先安装 `using-superpowers`，这个 skill 虽然仍可完成初始化，但后续常规开发线程将无法按预期 workflow 继续执行。
+
+## Git 说明
+
+这个 skill 预期项目本身是一个 git 项目。
+
+说明：
+
+- 它会优先通过项目根目录和 `.git` 状态识别当前项目
+- 如果目录不是 git 项目，初始化仍可能进行，但不属于推荐使用方式
+- 它不会修改源码、测试、CI、构建文件等与初始化无关的项目文件，除非用户明确要求
+- 它对项目根目录的 git 相关改动仅限于最小化创建或更新 `AGENTS.md` 和 `.gitignore`
+- 它不会主动执行 `git add`、`git commit`、`git push`、`git rm` 等 git 写操作
+- `AGENTS.md` 的默认策略是加入 `.gitignore`，目的是让本地 workflow 引导文件不污染原 git 项目
+- 如果 `AGENTS.md` 之前已经被 git 跟踪，仅修改 `.gitignore` 不会自动取消跟踪，这种情况下需要用户自行处理
+
+简而言之，这个 skill 的 git 行为边界是：识别 git 项目、最小更新本地引导文件、尽量不污染仓库历史。
+
 ## 这个版本的目标
 
 - 把项目初始化流程固定下来。
