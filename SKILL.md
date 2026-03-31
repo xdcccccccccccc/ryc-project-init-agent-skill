@@ -1,6 +1,6 @@
 ---
 name: project-init
-description: Use this skill only for first-time initialization of a software project. It creates persistent project state under ~/.codex-state/<project-key>/, stores the durable primary planning document at ~/.codex-state/<project-key>/plan/plan.md, requires later write-plan or writing-plans outputs to be written under ~/.codex-state/<project-key>/plan/ as feature- or topic-specific *_plan.md files instead of inside the repository, gathers the user's intended development goals before finalizing plan.md and feature_list.json, prefers Chinese for user-facing outputs unless the user explicitly requests another language, and creates or updates only the minimum required initialization files. It should also ensure AGENTS.md is git-ignored when appropriate. Do not use this skill for normal implementation work or routine bugfixes. After initialization, routine development should read the persistent state and use using-superpowers for one-feature-at-a-time execution.
+description: Use only when the user explicitly wants first-time project initialization, or when durable project state is clearly missing and the user agrees to run initialization. Do not use for routine implementation, bugfixes, review, or normal follow-up work in an already initialized project.
 ---
 
 # Project Init v5.3
@@ -76,6 +76,7 @@ Rules:
 
 Use this skill when **all or most** of the following are true:
 
+- the user explicitly asked to run `project-init` or clearly agreed to initialize the project now
 - this is the first serious Codex session for the project
 - the repository or project folder does not yet have a durable Codex workflow
 - there is no reliable persistent state for future threads
@@ -91,8 +92,14 @@ Do **not** use this skill when:
 - you are fixing a bug
 - you are in a routine development cycle
 - the task should be handled by `using-superpowers` or another implementation skill
+- the thread merely started and initialization has not been explicitly requested or confirmed
 
 If persistent state exists and is healthy, use the normal workflow instead of rerunning full initialization.
+
+Manual-trigger preference:
+
+- prefer explicit manual invocation such as `$project-init`
+- if state appears missing but the user did not ask to initialize yet, recommend running `$project-init` rather than silently taking over the thread as initialization work
 
 ---
 
@@ -574,6 +581,7 @@ General rules:
 - preserve existing project instructions over generated guidance when they conflict
 
 Prefer a small bootstrap `AGENTS.md` that points future threads to the state files, rather than a giant policy document.
+Prefer telling the user to manually run `$project-init` when initialization is needed, rather than assuming every new thread should automatically enter initialization.
 
 ---
 
