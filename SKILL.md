@@ -3,7 +3,7 @@ name: project-init
 description: Use this skill only for first-time initialization of a software project. It creates persistent project state under ~/.codex-state/<project-key>/, stores the durable primary planning document at ~/.codex-state/<project-key>/plan/plan.md, requires later write-plan or writing-plans outputs to be written under ~/.codex-state/<project-key>/plan/ as feature- or topic-specific *_plan.md files instead of inside the repository, gathers the user's intended development goals before finalizing plan.md and feature_list.json, prefers Chinese for user-facing outputs unless the user explicitly requests another language, and creates or updates only the minimum required initialization files. It should also ensure AGENTS.md is git-ignored when appropriate. Do not use this skill for normal implementation work or routine bugfixes. After initialization, routine development should read the persistent state and use using-superpowers for one-feature-at-a-time execution.
 ---
 
-# Project Init v5.2
+# Project Init v5.3
 
 ## Purpose
 
@@ -412,34 +412,31 @@ Keep `feature_list.json` aligned with the baseline plan.
 
 Create `STATE_DIR/project_knowledge/overview.md` as the durable project-understanding entrypoint.
 
-This file should capture understanding that is expensive to rediscover but stable enough to reuse across later threads.
+This file should capture reusable execution knowledge rather than project goals or planning prose.
 
-Required sections for all modes:
+Keep it focused on only these five categories:
 
-1. project summary
-2. stack and tooling
-3. top-level structure
-4. entry points or starting paths if inferable
-5. important conventions
-6. important paths and resources
-7. common commands if inferable
-8. risks and unknowns
+1. framework: project framework, runtime, and original project workflow or default development path
+2. navigation: if changing X, where to look first
+3. conventions: default ways of working and what not to bypass
+4. landmarks: where key logic, config, commands, and resources actually live
+5. risks: common misunderstandings, hidden assumptions, and likely pitfalls
 
-For `standard` mode, also include when grounded:
+For `standard` mode, add only when grounded:
 
 - module boundaries
-- key flows or core logic landmarks
+- key flows
 - config or environment landmarks
-- where to start reading for common task types
+- reading hints for common task types
 
-Rules:
+Hard constraints:
 
-1. prefer concise Markdown optimized for fast agent reading
-2. merge new understanding into `overview.md` when it fits existing headings
-3. do **not** duplicate the whole `plan.md`
-4. only create additional topic files later when the topic has clear long-term reuse value
-5. keep `overview.md` as an entrypoint summary rather than a full project encyclopedia
-6. if a section becomes long or topic-specific, replace detail with a short summary and move the detail into a dedicated topic file later
+1. use concise Markdown optimized for fast agent reading
+2. every point should help a later thread decide where to read or how to modify safely
+3. do **not** duplicate `plan.md`, `program.md`, roadmap, phase goals, or broad project background
+4. if a point cannot answer "look where / follow what convention / avoid what pitfall", it probably does not belong here
+5. keep `overview.md` as an entrypoint summary; split long topic-specific detail into later topic files only when clearly reusable
+6. merge into existing headings when possible instead of creating scattered notes
 
 ---
 
@@ -568,6 +565,7 @@ General rules:
 - prefer durable state over thread memory
 - prefer `project_knowledge/overview.md` before rescanning large parts of the repository
 - do **not** require later threads to read every durable file in full when a smaller targeted read is enough
+- treat `project_knowledge/overview.md` as execution knowledge, not as a duplicate of `program.md` or `plan.md`
 - treat the project-scoped plan directory as a user or project preference that overrides superpowers default plan locations
 - if a planning skill would normally write to an in-repo path, redirect it to `~/.codex-state/<project-key>/plan/` instead
 - when a planning skill creates a new plan file, prefer descriptive filenames ending in `_plan.md`
@@ -696,8 +694,8 @@ Future routine work should:
 Reading guidance for later threads:
 
 - start with `state.json` and `project_knowledge/overview.md`
-- read `plan.md` selectively for baseline goals, strategy, or risks rather than by default reading the whole file line by line
-- read `feature_list.json` selectively to identify the current active or next relevant feature
+- read `plan.md` only for baseline goals, strategy, or risks
+- read `feature_list.json` only to find the current relevant feature
 - read only the most recent relevant section of `progress.md` unless older history is needed
 - if topic files are added under `project_knowledge/`, read only the files relevant to the current task
 
